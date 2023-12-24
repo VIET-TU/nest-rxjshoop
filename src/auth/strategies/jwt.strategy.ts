@@ -8,13 +8,15 @@ import { UserService } from 'src/user/services/user.service'
 import { JwtPayoadType } from './types/jwt-payload-types'
 import { UserEntity } from 'src/user/entities/user.entity'
 import { Services } from 'src/utils/constants'
+import { HeadKey, RedisService } from 'src/redis/redis.service'
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 	constructor(
 		@Inject(Services.USERS) private readonly userService: UserService,
 		@Inject(forwardRef(() => KeyTokenService))
-		private readonly keyTokenService: KeyTokenService
+		private readonly keyTokenService: KeyTokenService,
+		private readonly redisService: RedisService
 	) {
 		super({
 			jwtFromRequest: ExtractJwt.fromExtractors([ExtractJwt.fromAuthHeaderAsBearerToken()]),
@@ -22,12 +24,11 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 			passReqToCallback: true,
 			secretOrKeyProvider: async (req: Request, _, done) => {
 				try {
-					const userId = req.headers[HEADER.CLIENT_ID]
+					const userId = req.headers[HEADER.CLIENT_ID] as string
 					if (!userId) throw new HttpException('Invalid request', HttpStatus.UNAUTHORIZED)
-					const keyStore = await this.keyTokenService.findKeyStoreByUserId(userId as string)
-					if (!keyStore) throw new HttpException('Not found keyStore', HttpStatus.UNAUTHORIZED)
-					req.body.keyStore = keyStore
-					done(null, keyStore.publicKey)
+					const publicKey = await this.redisService.getOnKey(HeadKey.AC_TOKEN, userId)
+					if (!publicKey) throw new HttpException('Not found PublicKey`', HttpStatus.UNAUTHORIZED)
+					done(null, publicKey)
 				} catch (error) {
 					done(error)
 				}
@@ -35,12 +36,13 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 		})
 	}
 	async validate(req: Request, { payload }: { payload: JwtPayoadType }): Promise<UserEntity> {
+		// after encry token
 		if (payload.userId !== req.headers[HEADER.CLIENT_ID])
 			throw new HttpException('Invaild userId', HttpStatus.BAD_REQUEST)
 		const user = await this.userService.findOneUserById(payload.userId)
 		if (!user) {
 			throw new HttpException('User not registered', HttpStatus.UNAUTHORIZED)
 		}
-		return user
+		return user as UserEntity
 	}
 }

@@ -1,26 +1,14 @@
 import { Exclude, Expose, Transform } from 'class-transformer'
 import { BaseEntity } from 'src/bases'
 import { hashX } from 'src/utils/helpers'
-import {
-	AfterLoad,
-	BeforeInsert,
-	BeforeUpdate,
-	Column,
-	Entity,
-	ManyToMany,
-	ManyToOne,
-	OneToOne,
-} from 'typeorm'
+import { AfterLoad, BeforeInsert, BeforeUpdate, Column, Entity, OneToMany, OneToOne } from 'typeorm'
 import { KeyTokenEntity } from '../../auth/entities/keyToken.entity'
+import { ProudctEntity } from 'src/products/entities/product.entity'
+import { Role } from 'src/utils/enums/role.enum'
 
 export enum StatusUser {
 	ACTIVE = 'active',
 	INACTIVE = 'inactive',
-}
-
-export enum Role {
-	User = 'user',
-	Admin = 'admin',
 }
 
 @Entity({ name: 'users' })
@@ -75,6 +63,17 @@ export class UserEntity extends BaseEntity {
 	@Exclude()
 	roles: Role
 
+	@Column({ nullable: true })
+	@Expose()
+	phone: string
+
+	@Column({ nullable: true })
+	@Expose()
+	address: string
+
 	@OneToOne((_to) => KeyTokenEntity, (keyToken) => keyToken.user)
 	keyToken: KeyTokenEntity
+
+	@OneToMany((_to) => ProudctEntity, (product) => product.product_shop)
+	products: ProudctEntity[]
 }

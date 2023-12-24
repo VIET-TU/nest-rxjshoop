@@ -29,9 +29,7 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
 				(request: Request) => {
 					const token = request?.cookies[process.env.REFRESH_TOKEN_COOKIE_NAME]
 					request.body.refreshToken = token
-					if (!token) {
-						return null
-					}
+					if (!token) return null
 					return token
 				},
 			]),
@@ -60,6 +58,6 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
 		if (!user) {
 			throw new HttpException('User not registered', HttpStatus.UNAUTHORIZED)
 		}
-		return user
+		return user as UserEntity
 	}
 }

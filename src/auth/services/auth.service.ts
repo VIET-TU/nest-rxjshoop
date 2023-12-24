@@ -1,6 +1,7 @@
+import { Action } from './../../post/ability.factory'
 import * as asOtpGenerator from 'otp-generator'
 import { HttpException, HttpStatus, Inject, Injectable, forwardRef } from '@nestjs/common'
-import { IAuthService } from '../interfaces/aut.interface'
+import { IAuthService } from '../interfaces/auth.interface'
 import { ConfirmEmailDto } from '../dtos/AuthConfirmEmailDto '
 import { ConfirmEmailReponse } from '../types/VertifyEmailReponse'
 import { UserService } from 'src/user/services/user.service'
@@ -37,6 +38,10 @@ export class AuthService implements IAuthService {
 	async logout(req: Request<any, Record<string, any>>, res: Response): Promise<void> {
 		const user = req.user as UserEntity
 		await this.keyTokenService.deleteKeyStoreByUser(user.id)
+
+		// delete access token on redis
+		await this.redisService.delOnKey(HeadKey.AC_TOKEN, user.id)
+
 		res.clearCookie(process.env.REFRESH_TOKEN_COOKIE_NAME as string, {
 			httpOnly: true,
 			secure: false,
@@ -52,9 +57,10 @@ export class AuthService implements IAuthService {
 		const { publicKey, privateKey } = req.body.keyStore as KeyTokenEntity
 		// const _refreshToken = req.body.refreshToken
 		const user = req.user as UserEntity
+
 		// if (refreshTokensUsed.includes(_refreshToken)) {
-		// 	// await KeyTokenService.deleteKeyById(userId)
-		// 	// throw new ForbiddenError('Something wrong happen !! Plean re-login')
+		// 	await keyTokenService.deleteKeyById(userId)
+		// 	throw new ForbiddenError('Something wrong happen !! Plean re-login')
 		// }
 
 		const { accessToken, refreshToken } = await this.getTokensData(
@@ -74,7 +80,14 @@ export class AuthService implements IAuthService {
 			res,
 			process.env.REFRESH_TOKEN_COOKIE_NAME,
 			refreshToken,
-			ms(process.env.AUTH_JWT_TOKEN_EXPIRES_IN)
+			ms(process.env.AUTH_REFRESH_TOKEN_EXPIRES_IN)
+		)
+
+		await this.redisService.setOnKey(
+			HeadKey.AC_TOKEN,
+			user.id,
+			publicKey,
+			ms(process.env.AUTH_JWT_TOKEN_EXPIRES_IN) / 1000 // minute
 		)
 
 		return {
@@ -90,7 +103,6 @@ export class AuthService implements IAuthService {
 		if (!exitsUser) {
 			throw new HttpException('emaild not exits', HttpStatus.BAD_REQUEST)
 		}
-		console.log('exitsUser :>> ', exitsUser)
 		if (exitsUser.status === StatusUser.INACTIVE)
 			throw new HttpException('User is not active', HttpStatus.BAD_REQUEST)
 		const match = await compareHash(password, exitsUser.password)
@@ -130,11 +142,10 @@ export class AuthService implements IAuthService {
 			ms(process.env.AUTH_JWT_TOKEN_EXPIRES_IN)
 		)
 
-		console.log(exitsUser.email + `:${exitsUser.id.toString()}`)
 		await this.redisService.setOnKey(
 			HeadKey.AC_TOKEN,
 			exitsUser.id,
-			accessToken,
+			publicKey,
 			ms(process.env.AUTH_JWT_TOKEN_EXPIRES_IN) / 1000 // minute
 		)
 		return {
@@ -144,25 +155,32 @@ export class AuthService implements IAuthService {
 	}
 
 	async register(registerDto: RegisterDto): Promise<UserEntity> {
-		console.log('object :>> ', registerDto)
-		const { email, firstName, lastName, password } = registerDto
+		const { email } = registerDto
 		const exitsUser = await this.userService.findOneUserByEmail(email)
+
 		if (exitsUser) throw new HttpException('User already exists', HttpStatus.CONFLICT)
+
 		const isVertifyEmail = await this.redisService.getOnKey(HeadKey.Register, email)
 		if (!isVertifyEmail) throw new HttpException('Email expired vertify', HttpStatus.FORBIDDEN)
 		await this.redisService.delOnKey(HeadKey.Register, email)
+
 		const user = await this.userService.createUser(registerDto)
 
-		this.sendMail.add(
-			'register',
-			{
-				to: email,
-				name: user.fullName,
-			},
-			{
-				removeOnComplete: true,
-			}
-		)
+		try {
+			this.sendMail.add(
+				'register',
+				{
+					to: email,
+					name: user.fullName,
+				},
+				{
+					removeOnComplete: true,
+				}
+			)
+		} catch (e) {
+			return e
+		}
+
 		return user
 	}
 

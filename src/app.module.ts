@@ -9,11 +9,13 @@ import { join } from 'path'
 import { RedisModule } from './redis/redis.module'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { AuthModule } from './auth/auth.module'
-import { APP_FILTER } from '@nestjs/core'
+import { APP_FILTER, APP_GUARD } from '@nestjs/core'
 import { HttpExceptionFilter } from './utils/filters/http-exception.filter'
 import { PostModule } from './post/post.module'
 import { BullModule } from '@nestjs/bull'
-import { GrapqlModule } from './grapql/grapql.module';
+import { ProductsModule } from './products/products.module'
+import { RolesGuard } from './utils/guards/roles.guard'
+import { MediaModule } from './media/media.module'
 
 @Module({
 	imports: [
@@ -74,8 +76,8 @@ import { GrapqlModule } from './grapql/grapql.module';
 		RedisModule,
 		UserModule,
 		AuthModule,
-		PostModule,
-		GrapqlModule,
+		ProductsModule,
+		MediaModule,
 	],
 	controllers: [AppController],
 	providers: [

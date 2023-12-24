@@ -1,30 +1,29 @@
 import {
-	Controller,
-	Post,
 	Body,
-	Inject,
-	UseInterceptors,
-	HttpCode,
-	Res,
+	Controller,
 	Get,
-	UseGuards,
+	HttpCode,
 	HttpStatus,
-	Req,
+	Inject,
+	Post,
 	Request,
+	Res,
+	UseGuards,
+	UseInterceptors,
 } from '@nestjs/common'
 
-import { Services } from 'src/utils/constants'
-import { IAuthService } from './interfaces/aut.interface'
-import { ConfirmEmailReponse } from './types/VertifyEmailReponse'
-import { ConfirmEmailDto } from './dtos/AuthConfirmEmailDto '
-import { ResponseInterceptor } from 'src/utils/reponse.interceptor'
-import { VertifyOtpDto } from './dtos/VertifyOtpDto'
-import { RegisterDto } from './dtos/register.dto'
-import { UserEntity } from 'src/user/entities/user.entity'
-import { loginDto } from './dtos/login.dto'
-import { Response } from 'express'
 import { AuthGuard } from '@nestjs/passport'
+import { Response } from 'express'
+import { UserEntity } from 'src/user/entities/user.entity'
+import { Services } from 'src/utils/constants'
+import { ResponseInterceptor } from 'src/utils/reponse.interceptor'
+import { ConfirmEmailDto } from './dtos/AuthConfirmEmailDto '
+import { VertifyOtpDto } from './dtos/VertifyOtpDto'
+import { loginDto } from './dtos/login.dto'
+import { RegisterDto } from './dtos/register.dto'
+import { IAuthService } from './interfaces/auth.interface'
 import { LoginResponseType } from './types/LoginResponse'
+import { ConfirmEmailReponse } from './types/VertifyEmailReponse'
 
 @Controller('auth')
 export class AuthController {
@@ -61,7 +60,7 @@ export class AuthController {
 
 	@Post('refresh')
 	@UseGuards(AuthGuard('jwt-refresh'))
-	@UseInterceptors(new ResponseInterceptor('refresh token successfully'))
+	@UseInterceptors(new ResponseInterceptor('Refresh token successfully'))
 	@HttpCode(HttpStatus.OK)
 	async refreshToken(
 		@Request() req,

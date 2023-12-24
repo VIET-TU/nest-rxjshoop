@@ -1,8 +1,3 @@
-// user
-// publicKey
-// privateKey
-// refreshToken
-
 import { Expose } from 'class-transformer'
 import { Column, Entity, JoinColumn, OneToMany, OneToOne } from 'typeorm'
 import { UserEntity } from '../../user/entities/user.entity'
@@ -20,8 +15,8 @@ export class KeyTokenEntity extends BaseEntity {
 	@Column({ unique: true })
 	privateKey!: string
 
-	@Column({ unique: true, default: null })
-	refreshTokensUsed: string
+	@Column('text', { array: true, default: null })
+	refreshTokensUsed: string[]
 
 	@Column({ unique: true })
 	refreshToken!: string
